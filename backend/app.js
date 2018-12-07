@@ -78,6 +78,7 @@ passport.use("local-login", new localStrategy({
 			req.session.username= username;
 			return done(null,user)
 		}
+		return done(null,false,"Wrong credentials");
 	});
 }));
 
