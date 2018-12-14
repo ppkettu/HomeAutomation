@@ -1,54 +1,94 @@
 
 
 class SmartHomeRoot {
-    constructor(id) {
+    constructor() {
         //if(name === undefined) name = '';
-        //if(id === undefined) id = '';
-        //if(type === undefined) type = -1;
-        this.name = undefined;
-        this.id = id;
+        this.name = null;
+        //this.id = null;
         this.type = -1;
-        this.collectionName = undefined;
-        this.children = [];
-        this.model = undefined;
+        this.model = null;
+        this.childModel = null;
+        this.parentId = null;
     }
-    getList(req,res) {
+    Items(req, res, next) {
         this.model.find(function(err,items) {
-            if(err) {
-                return res.status(404).json({"message":"list not found"})
-            }
-            if(!items) { // sanity check
-                return res.status(404).json({"message":"list not found"})
-            }
-            return res.status(200).json(items);
-        })
-    }
-    _load(self,item) {
-
-    }
-    load(req,res) {
-        let self = this;
-        this.model.findOne({"id":req.params.id}, function(err,items) {
             if(err || !items) {
                 return res.status(404).json({"message":"item not found"});
-                //return null;
             }
-            self.name = items.name;
-            self.id = items.id;
-            self.type = items.type;
-            self._load(self,items)
-
-            
-            return res.status(200).json(items);
+            res.status(200).json(items)
         })
     }
-    getChildren (req,res) {
+    _load(item,req) {
+    }
+    GetOne(req,res,next) {
+        let self = this;
+        this.model.findOne({"_id":req.params.id}, function(err,item) {
+            if(err || !item) {
+                return res.status(404).json({"message":"item not found"});
+            }
+            return res.status(200).json(item);
+        })
+    }
+    ReplaceOne(req,res,next) {
+        let item = new this.model({
+            name: req.body.name,
+            type:req.body.type
+        });
+        this._load(item,req);
+        item._id = req.body.id;
+        this.model.replaceOne({"_id":req.body.id}, item, function(err) {
+            if(err) {
+                console.log(err.message);
+                return res.status(404).json({"message":"item not found"});
+            }
+            return res.status(200).json({"message":"success"});
+        });
+    }
+    GetChildren (req,res,next) {
+        if(!this.childModel) {
+            return res.status(404).json({"message":"no childModel"});
+        }
+        this.childModel.find({"parentid":req.params.id}, function(err,items) {
+            if(err || !items) {
+                return res.status(404).json({"message":"no items"});
+            }
+            res.status(200).json(items)
+        })
+    }
+    Save(req,res,next) {
+        let item = new this.model({
+            name: req.body.name,
+            //id: req.body.id,
+            type:req.body.type
+        });
+        this._load(item,req);
+        item.save(function(err) {
+            if(err) {
+                return res.status(409).json({"message":"item not saved"})
+            }
+            //console.log(item._id)    
+            return res.status(200).json({"message":"success","id":item.id});
+        })
+        console.log(item.id);
+    }
+    Delete(req,res,next) {
+        console.log("delete:"+req.params.id);
+        this.model.deleteOne({"_id": req.params.id}, function(err) {
+            if(err) {
+                return res.status(404).json({"message":"not found"});
+            }
+            return res.status(200).json({"message":"success"})
+        })
+    }
+    DeleteChildren(req,res,next) {
+        console.log("deleteChildren:"+req.params.id);
+        this.childModel.delete({"parentid":req.params.id}, function(err) {
+            if(err) {
+                return res.status(404).json({"message":"not found"});
+            }
+            return res.status(200).json({"message":"success"})
+        })
     }
 }
 
 module.exports = SmartHomeRoot;
-
-/*SmartHomeRoot.prototype.getChildren = function() {
-    var self = this;
-    return this.children;
-}*/
